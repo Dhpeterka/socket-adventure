@@ -79,9 +79,11 @@ class Server(object):
         :return: str
         """
 
-        # TODO: YOUR CODE HERE
-
-        pass
+        return [
+            'You are in the Forier.',
+            'You just walked into the coat closet.',
+            'This is the dining room.',
+            'You just stumbled up the stairs.'][room_number]
 
     def greet(self):
         """
@@ -108,9 +110,12 @@ class Server(object):
         :return: None 
         """
 
-        # TODO: YOUR CODE HERE
+        input = b''
+        while b'\n' not in input:
+            input += self.client_connection.recv(16)
+        
+        self.input_buffer = input.decode().strip()
 
-        pass
 
     def move(self, argument):
         """
@@ -133,9 +138,29 @@ class Server(object):
         :return: None
         """
 
-        # TODO: YOUR CODE HERE
+        # Available options for each room
+        available = {0: {'west': 1, 'north': 3, 'east': 2},
+                     1: {'east': 0},
+                     2: {'west': 0},
+                     3: {'south': 0}
+                    }
 
-        pass
+        # Identify and handle invalid direction commands
+        try:
+            if argument not in available[self.room].keys():
+                raise SyntaxError
+
+            else:
+                # set location to new room
+                self.room = available[self.room][argument]
+
+                # feed new, current room description to output buffer
+                self.output_buffer = self.room_description(self.room)
+
+        except SyntaxError:
+            # Output error message and continue loop if invalid input.
+            self.output_buffer = 'You may not.'
+
 
     def say(self, argument):
         """
@@ -151,9 +176,7 @@ class Server(object):
         :return: None
         """
 
-        # TODO: YOUR CODE HERE
-
-        pass
+        self.output_buffer = f'You say, "{argument}"'
 
     def quit(self, argument):
         """
@@ -167,9 +190,14 @@ class Server(object):
         :return: None
         """
 
-        # TODO: YOUR CODE HERE
+        self.done = True
+        self.output_buffer = 'Goodbye'
 
-        pass
+    def where(self, argument):
+        '''
+        Tells user where they are.
+        '''
+        self.output_buffer = self.room_description(self.room)
 
     def route(self):
         """
@@ -183,9 +211,26 @@ class Server(object):
         :return: None
         """
 
-        # TODO: YOUR CODE HERE
+        # Split input into a list of individual words
+        input = self.input_buffer.split(' ')
 
-        pass
+        # Read'n'remove the first word of the input as the command
+        command = input.pop(0)
+
+        # Combine remaining words back into the input string
+        argument = ' '.join(input)
+
+        # Route accordingly
+        try:
+            {'quit': self.quit,
+             'say': self.say,
+             'move': self.move,
+             'where': self.where
+            }[command](argument)
+
+        except KeyError:
+            self.output_buffer = 'Invalid Command.'
+
 
     def push_output(self):
         """
@@ -197,9 +242,7 @@ class Server(object):
         :return: None 
         """
 
-        # TODO: YOUR CODE HERE
-
-        pass
+        self.client_connection.sendall(b"Ok.  " + self.output_buffer.encode() + b"\n")
 
     def serve(self):
         self.connect()
